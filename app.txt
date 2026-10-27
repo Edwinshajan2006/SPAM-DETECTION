@@ -1,0 +1,207 @@
+
+# Import Streamlit to create the web application interface.
+import streamlit as st
+
+# Import Joblib to load the trained machine learning model from a .pkl file.
+import joblib
+
+# Import Path to handle file paths safely across different operating systems.
+from pathlib import Path
+
+
+# --------------------------------------------------
+# BLOCK 1: PAGE CONFIGURATION
+# --------------------------------------------------
+
+# Configure the browser tab title, icon, and page layout.
+# This must be called before other Streamlit commands that display content.
+st.set_page_config(
+    page_title="NED Spam Detector",  # Text displayed in the browser tab.
+    page_icon="🛡️",                  # Icon displayed in the browser tab.
+    layout="centered",               # Keep the application content centered.
+)
+
+
+# --------------------------------------------------
+# BLOCK 2: DEFINE THE MODEL FILE PATH
+# --------------------------------------------------
+
+# __file__ represents the location of the current app.py file.
+# Path(__file__).parent gets the directory containing app.py.
+# / "spam_model.pkl" adds the model filename to that directory.
+# This allows the app to locate the model regardless of the working directory.
+MODEL_PATH = Path(__file__).parent / "spam_model.pkl"
+
+
+# --------------------------------------------------
+# BLOCK 3: LOAD THE TRAINED MODEL
+# --------------------------------------------------
+
+# @st.cache_resource tells Streamlit to cache the loaded model.
+# The model is loaded once and reused across app reruns instead of
+# loading the same file repeatedly, which saves time and resources.
+@st.cache_resource
+def load_model():
+    # Load the saved machine learning pipeline from the .pkl file.
+    # The pipeline is expected to contain TF-IDF vectorization and
+    # the trained Linear SVM classifier.
+    return joblib.load(MODEL_PATH)
+
+
+# --------------------------------------------------
+# BLOCK 4: HANDLE MODEL LOADING ERRORS
+# --------------------------------------------------
+
+# try executes the model-loading operation while monitoring for errors.
+try:
+    # Call the function to load the model, or retrieve it from the cache.
+    model = load_model()
+
+# FileNotFoundError occurs when spam_model.pkl does not exist at MODEL_PATH.
+except FileNotFoundError:
+    # Display a helpful message instead of an unhandled Python traceback.
+    st.error(
+        "Model file not found. Train the model first "
+        "and ensure spam_model.pkl is in the project folder."
+    )
+
+    # Stop execution because predictions cannot be made without the model.
+    st.stop()
+
+# Handle other loading errors, such as an invalid model file or
+# incompatible serialization environment.
+except Exception as error:
+    # Display the error message to help identify the problem.
+    st.error(f"Could not load the model: {error}")
+
+    # Stop execution because the model was not loaded successfully.
+    st.stop()
+
+
+# --------------------------------------------------
+# BLOCK 5: DISPLAY THE APPLICATION INTERFACE
+# --------------------------------------------------
+
+# Display the main heading of the application.
+st.title("🛡️ NED Spam Detector")
+
+# Display a short description of the machine learning techniques used.
+st.caption("Machine Learning · TF-IDF + Linear SVM")
+
+# Explain the purpose of the application to the user.
+st.write(
+    "Enter an SMS message below to check whether "
+    "it is spam or a legitimate message."
+)
+
+
+# --------------------------------------------------
+# BLOCK 6: GET THE SMS MESSAGE FROM THE USER
+# --------------------------------------------------
+
+# Create a multiline text input box where the user can enter an SMS.
+message = st.text_area(
+    "Enter your SMS message",  # Label displayed above the input box.
+
+    # Show an example inside the box before the user types anything.
+    placeholder="Example: Congratulations! You have won a prize...",
+
+    # Set the height of the text input area to 150 pixels.
+    height=150,
+)
+
+
+# --------------------------------------------------
+# BLOCK 7: CHECK WHETHER THE USER CLICKS THE BUTTON
+# --------------------------------------------------
+
+# Display a button labelled "Check Message".
+# The indented code runs when the user clicks the button.
+# type="primary" gives the button Streamlit's primary styling.
+# use_container_width=True makes the button fill the available width.
+if st.button("Check Message", type="primary", use_container_width=True):
+
+    # --------------------------------------------------
+    # BLOCK 8: VALIDATE THE USER INPUT
+    # --------------------------------------------------
+
+    # strip() removes whitespace from the beginning and end of the message.
+    # If the message is empty or contains only whitespace, show a warning.
+    if not message.strip():
+        st.warning("Please enter a message first.")
+
+    # Continue only when the user has entered a non-empty message.
+    else:
+
+        # --------------------------------------------------
+        # BLOCK 9: PREDICT THE MESSAGE CLASS
+        # --------------------------------------------------
+
+        # model.predict() accepts a list of text messages.
+        # [message] converts the single message into a one-item list.
+        #
+        # The TF-IDF stage converts the text into numerical features.
+        # The trained Linear SVM uses those features to predict the class.
+        #
+        # [0] extracts the prediction for the first and only message.
+        prediction = model.predict([message])[0]
+
+        # --------------------------------------------------
+        # BLOCK 10: NORMALIZE THE PREDICTED LABEL
+        # --------------------------------------------------
+
+        # Convert the predicted value into a string.
+        # strip() removes surrounding whitespace.
+        # lower() converts uppercase letters to lowercase.
+        #
+        # For example, "SPAM" becomes "spam".
+        label = str(prediction).strip().lower()
+
+        # Draw a horizontal divider to separate the input from the result.
+        st.divider()
+
+        # --------------------------------------------------
+        # BLOCK 11: DISPLAY THE PREDICTION RESULT
+        # --------------------------------------------------
+
+        # If the model predicts "spam" or the numeric label 1,
+        # display a red error-style message indicating spam.
+        if label in {"spam", "1"}:
+            st.error("🚨 Spam Message Detected")
+
+            # Explain the result to the user.
+            st.write(
+                "This message was classified as spam "
+                "by the trained machine learning model."
+            )
+
+        # If the model predicts "ham", "not spam", or the numeric label 0,
+        # display a green success-style message indicating a legitimate SMS.
+        elif label in {"ham", "not spam", "0"}:
+            st.success("✅ Legitimate Message (Ham)")
+
+            # Explain that the model classified the message as legitimate.
+            st.write(
+                "This message was classified as legitimate "
+                "by the trained machine learning model."
+            )
+
+        # If the prediction does not match any expected label,
+        # display the actual prediction instead of silently misclassifying it.
+        else:
+            st.warning(
+                f"Model returned an unexpected label: {prediction}"
+            )
+
+
+# --------------------------------------------------
+# BLOCK 12: FOOTER
+# --------------------------------------------------
+
+# Draw a horizontal divider above the footer.
+st.divider()
+
+# Display the technologies used to build the application.
+st.caption(
+    "Built with Python, Streamlit, scikit-learn and TF-IDF."
+)
