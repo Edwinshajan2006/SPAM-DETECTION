@@ -1,0 +1,127 @@
+```python
+# ============================================================
+# SMS SPAM DETECTION MODEL
+# Algorithm: TF-IDF + Linear SVM
+# Dataset: UCI SMS Spam Collection
+# Purpose: Train, evaluate, and save an SMS spam classifier
+# ============================================================
+
+# Import Path to handle file and directory paths.
+from pathlib import Path
+
+# Import joblib to save the trained model for future use.
+import joblib
+
+# Import pandas to load and manipulate the dataset.
+import pandas as pd
+
+# Convert text messages into numerical features using TF-IDF.
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Split the dataset into training and testing data.
+from sklearn.model_selection import train_test_split
+
+# Combine text processing and classification into one pipeline.
+from sklearn.pipeline import Pipeline
+
+# LinearSVC is the Support Vector Machine classification algorithm.
+from sklearn.svm import LinearSVC
+
+# Import evaluation metrics to measure model performance.
+from sklearn.metrics import (
+    accuracy_score,        # Percentage of correct predictions.
+    precision_score,       # How many predicted spam messages are actually spam.
+    recall_score,          # How many actual spam messages are detected.
+    f1_score,              # Balance between precision and recall.
+    classification_report, # Detailed metrics for ham and spam.
+    confusion_matrix,      # Counts correct and incorrect predictions.
+)
+
+
+# ============================================================
+# BLOCK 1: LOCATE AND CHECK THE DATASET
+# ============================================================
+
+# Define the location of the SMS Spam Collection dataset.
+DATA_PATH = Path("data/SMSSpamCollection")
+
+# Stop the program if the dataset file does not exist.
+# This prevents the program from trying to load a missing file.
+if not DATA_PATH.exists():
+    raise FileNotFoundError(
+        f"Dataset not found at {DATA_PATH}. Download the SMS Spam Collection "
+        "dataset and place the SMSSpamCollection file inside the data/ folder."
+    )
+
+
+# ============================================================
+# BLOCK 2: LOAD THE DATASET
+# ============================================================
+
+# Read the tab-separated dataset into a pandas DataFrame.
+df = pd.read_csv(
+    DATA_PATH,
+    sep="\t",                       # Columns are separated by tabs.
+    header=None,                    # The file does not contain column headers.
+    names=["label", "message"],     # Assign names to the two columns.
+    encoding="utf-8",               # Decode the text using UTF-8.
+)
+
+# Each row contains a label (ham or spam) and an SMS message.
+
+
+# ============================================================
+# BLOCK 3: CLEAN THE DATA
+# ============================================================
+
+# Remove rows where the label or message is missing.
+df = df.dropna(subset=["label", "message"])
+
+# Remove extra spaces and convert labels to lowercase.
+# This makes labels such as " SPAM " consistent with "spam".
+df["label"] = df["label"].str.strip().str.lower()
+
+# Convert messages to strings and remove surrounding whitespace.
+df["message"] = df["message"].astype(str).str.strip()
+
+# Keep only rows with valid labels: ham (normal) or spam.
+df = df[df["label"].isin(["ham", "spam"])]
+
+# Remove duplicate label-message combinations to reduce repeated records.
+df = df.drop_duplicates(subset=["label", "message"])
+
+
+# ============================================================
+# BLOCK 4: SEPARATE INPUTS AND TARGET LABELS
+# ============================================================
+
+# X contains the SMS messages that the model will analyse.
+X = df["message"]
+
+# y contains the correct labels the model must learn to predict.
+# "ham" means a normal message; "spam" means an unwanted message.
+y = df["label"]
+
+
+# ============================================================
+# BLOCK 5: SPLIT THE DATASET
+# ============================================================
+
+# Divide the dataset into training data and testing data.
+X_train, X_test, y_train, y_test = train_test_split(
+    X,                              # Input messages.
+    y,                              # Correct labels.
+    test_size=0.20,                 # Reserve 20% for testing.
+    random_state=42,                # Make the split reproducible.
+    stratify=y,                     # Preserve the approximate class proportions.
+)
+
+# Training data teaches the model.
+# Testing data evaluates it on messages not used during training.
+
+
+# ============================================================
+# BLOCK 6: CREATE THE MACHINE LEARNING PIPELINE
+# ============================================================
+
+# A pipeline
