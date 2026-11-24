@@ -2,6 +2,12 @@
 
 <div align="center">
 
+<img src="./profile-banner.svg" width="100%" alt="SMS SHIELD project banner" />
+
+</div>
+
+<div align="center">
+
 ### SMS Shield · Machine-learning based message classification
 
 [![Python](https://img.shields.io/badge/Python-3.x-111827?style=flat-square&logo=python)](https://www.python.org/)
